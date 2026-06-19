@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+env/
+
+# Environment Variables (Güvenlik için çok önemli)
+.env
+
+# OS generated files (Mac için)
+.DS_Store
+
+.zed/
