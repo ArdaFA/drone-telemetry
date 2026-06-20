@@ -21,7 +21,7 @@
                 width: 100vw;
             }
 
-            /* DLR ilanındaki "Altitude" (İrtifa) verisini göstermek için UI kutusu */
+            /* UI for altitude */
             #telemetry-ui {
                 position: absolute;
                 top: 20px;
@@ -63,8 +63,8 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
         <script>
-            // --- 1. HARİTAYI BAŞLAT ---
-            // DLR Braunschweig kampüsüne odaklanıyoruz
+            // Start the Map,
+            // koordinaten von DLR
             var map = L.map("map").setView([52.315, 10.55], 16);
 
             L.tileLayer(
@@ -76,37 +76,37 @@
                 },
             ).addTo(map);
 
-            // --- 2. DRONE İKONU VE ROTA (PATH) ÇİZGİSİ ---
-            // Drone'u temsil eden bir işaretçi (marker)
+            // 2. drone icon and path line ---
+            // drone = marker
             var droneMarker = L.marker([52.315, 10.55]).addTo(map);
 
-            // Drone'un arkasında bırakacağı kırmızı uçuş rotası
+            // the line left behind the drone
             var pathLine = L.polyline([], { color: "red", weight: 3 }).addTo(
                 map,
             );
 
-            // --- 3. WEBSOCKET BAĞLANTISI (REAL-TIME COMMUNICATION) ---
-            // Python FastAPI sunucumuzla canlı köprü kuruyoruz
+            // 3. websocket connection
+            // connect to python fastapi
             var ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
 
             ws.onopen = function () {
                 console.log("Connected to DLR Telemetry Server!");
             };
 
-            // Sunucudan saniyede 10 kez yeni veri geldiğinde tetiklenen fonksiyon
+            // function triggers when 10 times data comes from the server
             ws.onmessage = function (event) {
                 var data = JSON.parse(event.data);
 
-                // Yeni koordinatları al
+                // get the new coordinates
                 var newLatLng = new L.LatLng(data.latitude, data.longitude);
 
-                // 1. Drone'un haritadaki yerini güncelle
+                // update the drones position
                 droneMarker.setLatLng(newLatLng);
 
-                // 2. Kırmızı rotaya yeni noktayı ekle
+                // add to the red route
                 pathLine.addLatLng(newLatLng);
 
-                // 3. Sağ üstteki UI panelindeki rakamları güncelle (Altitude dahil)
+                // update the ui panel top right corner
                 document.getElementById("lat-val").innerText =
                     data.latitude.toFixed(5);
                 document.getElementById("lon-val").innerText =
