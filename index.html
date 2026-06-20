@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>DLR Real-Time Drone Telemetry</title>
+
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: sans-serif;
+            }
+            #map {
+                height: 100vh;
+                width: 100vw;
+            }
+
+            /* DLR ilanındaki "Altitude" (İrtifa) verisini göstermek için UI kutusu */
+            #telemetry-ui {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+                min-width: 200px;
+            }
+
+            .data-row {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+            .data-value {
+                font-weight: bold;
+                color: #d32f2f;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="telemetry-ui">
+            <h3 style="margin: 0 0 10px 0">Live Telemetry</h3>
+            <div class="data-row">
+                Lat: <span id="lat-val" class="data-value">--</span>
+            </div>
+            <div class="data-row">
+                Lon: <span id="lon-val" class="data-value">--</span>
+            </div>
+            <div class="data-row">
+                Alt: <span id="alt-val" class="data-value">--</span> m
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+        <script>
+            // --- 1. HARİTAYI BAŞLAT ---
+            // DLR Braunschweig kampüsüne odaklanıyoruz
+            var map = L.map("map").setView([52.315, 10.55], 16);
+
+            L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+                {
+                    maxZoom: 19,
+                    attribution:
+                        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                },
+            ).addTo(map);
+
+            // --- 2. DRONE İKONU VE ROTA (PATH) ÇİZGİSİ ---
+            // Drone'u temsil eden bir işaretçi (marker)
+            var droneMarker = L.marker([52.315, 10.55]).addTo(map);
+
+            // Drone'un arkasında bırakacağı kırmızı uçuş rotası
+            var pathLine = L.polyline([], { color: "red", weight: 3 }).addTo(
+                map,
+            );
+
+            // --- 3. WEBSOCKET BAĞLANTISI (REAL-TIME COMMUNICATION) ---
+            // Python FastAPI sunucumuzla canlı köprü kuruyoruz
+            var ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
+
+            ws.onopen = function () {
+                console.log("Connected to DLR Telemetry Server!");
+            };
+
+            // Sunucudan saniyede 10 kez yeni veri geldiğinde tetiklenen fonksiyon
+            ws.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+
+                // Yeni koordinatları al
+                var newLatLng = new L.LatLng(data.latitude, data.longitude);
+
+                // 1. Drone'un haritadaki yerini güncelle
+                droneMarker.setLatLng(newLatLng);
+
+                // 2. Kırmızı rotaya yeni noktayı ekle
+                pathLine.addLatLng(newLatLng);
+
+                // 3. Sağ üstteki UI panelindeki rakamları güncelle (Altitude dahil)
+                document.getElementById("lat-val").innerText =
+                    data.latitude.toFixed(5);
+                document.getElementById("lon-val").innerText =
+                    data.longitude.toFixed(5);
+                document.getElementById("alt-val").innerText =
+                    data.altitude.toFixed(2);
+            };
+
+            ws.onerror = function (error) {
+                console.error("WebSocket Error: ", error);
+            };
+        </script>
+    </body>
+</html>
